@@ -1,0 +1,27 @@
+{
+  "name": "wipi-home-portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "@mdi/font": "^3.6.95",
+    "core-js": "^2.6.5",
+    "roboto-fontface": "*",
+    "vee-validate": "^2.2.13",
+    "vue": "^2.6.10",
+    "vue-qrcode-reader": "^2.0.2",
+    "vuetify": "^2.0.0"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "^3.9.0",
+    "@vue/cli-service": "^3.9.0",
+    "sass": "^1.17.4",
+    "sass-loader": "^7.1.0",
+    "vue-cli-plugin-vuetify": "^0.6.1",
+    "vue-template-compiler": "^2.6.10",
+    "vuetify-loader": "^1.2.2"
+  }
+}
