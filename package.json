@@ -13,6 +13,8 @@
     "vee-validate": "^2.2.13",
     "vue": "^2.6.10",
     "vue-qrcode-reader": "^2.0.2",
+    "vue-router": "^3.0.3",
+    "vue-router-layout": "^0.1.2",
     "vuetify": "^2.0.0"
   },
   "devDependencies": {
@@ -20,6 +22,8 @@
     "@vue/cli-service": "^3.9.0",
     "sass": "^1.17.4",
     "sass-loader": "^7.1.0",
+    "vue-auto-routing": "^0.3.0",
+    "vue-cli-plugin-auto-routing": "^0.2.1",
     "vue-cli-plugin-vuetify": "^0.6.1",
     "vue-template-compiler": "^2.6.10",
     "vuetify-loader": "^1.2.2"
