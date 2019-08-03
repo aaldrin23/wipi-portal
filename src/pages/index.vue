@@ -14,6 +14,14 @@
             </div>
           </div>
         </v-flex>
+        <v-flex shrink v-if="deviceNotRegister">
+          <v-alert type="error" :value="true">
+            This device was not register to your account
+            <template v-slot:close="{toggle}">
+              <v-icon class="ml-2" @click="toggle">mdi-close-circle</v-icon>
+            </template>
+          </v-alert>
+        </v-flex>
         <v-flex shrink>
           <v-card min-width="300">
             <v-tabs dark v-model="tab" background-color="primary" slider-color="white">
@@ -69,6 +77,7 @@
                             :disabled="!voucher"
                             block
                             color="primary"
+                            @click="submitVoucher"
                           >Continue</v-btn>
                         </v-card-actions>
                         <v-dialog
@@ -139,19 +148,20 @@
 
 <script>
 import { QrcodeStream } from "vue-qrcode-reader";
+import axios from "axios";
 
 const reqSchema = {
-  res: "notyet",
-  uamip: "192.168.10.1",
-  uamport: "3990",
-  challenge: "79b3c881090a2b26532f25a083e7d962",
-  called: "B8-27-EB-33-17-3D",
-  mac: "34-41-5D-D9-E3-06",
-  ip: "192.168.10.4",
-  ssid: "Arabis-GOWIFI",
-  nasid: "KUPIKI",
-  sessionid: "156441000700000001",
-  userurl: "http://google.com/"
+  res: "",
+  uamip: "",
+  uamport: "",
+  challenge: "",
+  called: "",
+  mac: "",
+  ip: "",
+  ssid: "",
+  nasid: "",
+  sessionid: "",
+  userurl: ""
 };
 export default {
   components: {
@@ -165,7 +175,8 @@ export default {
       qrDialog: false,
       loading: false,
       isAuthenticated: false,
-      appLoaded: false
+      deviceNotRegister: false,
+      appLoaded: true
     };
   },
   computed: {
@@ -173,19 +184,35 @@ export default {
       return this.$route.query;
     }
   },
+  async created() {
+    try {
+      const { data } = await axios.get(
+        portalConfig.backendURL + "portal/auto-connect",
+        {
+          params: {
+            mac_address: this.request.mac
+          }
+        }
+      );
+    } catch (err) {
+      console.log(err);
+    }
+  },
   mounted() {
-    chilliController.host = "192.168.10.1";
-    chilliController.port = 3990;
-    chilliController.interval = 20;
+    chilliController.host = portalConfig.host;
+    chilliController.port = portalConfig.port;
+    chilliController.interval = portalConfig.interval;
+    chilliController.debug = portalConfig.debug;
 
-    chilliController.debug = true;
     chilliController.onError = this.handleErrors;
     chilliController.onUpdate = this.updateUI;
 
     chilliController.refresh();
   },
   methods: {
-    handleErrors(code) {},
+    handleErrors(code) {
+      console.log(code);
+    },
     updateUI() {
       this.isAuthenticated = chilliController.clientState;
       this.appLoaded = true;
@@ -198,14 +225,42 @@ export default {
     async submitVoucher() {
       this.loading = true;
       this.request.vouhcer = this.voucher;
-      const { data } = await axios.post("/portal/voucher", this.request);
-      console.log(data);
+      const { data } = await axios.post(
+        portalConfig.backendURL + "portal/vouchers",
+        this.request
+      );
+      if (data.status) {
+        this.loginData = {
+          username: this.request.mac,
+          password: data.login.password
+        };
+        this.submitLogin();
+      }
     },
-    submitLogin() {
+    async submitLogin() {
       this.loading = true;
+      this.deviceNotRegister = false;
       const { username, password } = this.loginData;
 
-      chilliController.logon(username, password);
+      try {
+        const { data } = await axios.get(
+          portalConfig.backendURL + "portal/device-access",
+          {
+            params: {
+              username,
+              mac_address: this.request.mac
+            }
+          }
+        );
+        if (data.allow) {
+          chilliController.logon(username, password);
+          this.deviceNotRegister = false;
+        } else {
+          this.deviceNotRegister = true;
+        }
+      } catch (err) {
+        chilliController.logon(username, password);
+      }
     }
   }
 };
