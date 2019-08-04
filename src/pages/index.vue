@@ -176,26 +176,12 @@ export default {
       loading: false,
       isAuthenticated: false,
       deviceNotRegister: false,
-      appLoaded: true
+      appLoaded: false
     };
   },
   computed: {
     request() {
       return this.$route.query;
-    }
-  },
-  async created() {
-    try {
-      const { data } = await axios.get(
-        portalConfig.backendURL + "portal/auto-connect",
-        {
-          params: {
-            mac_address: this.request.mac
-          }
-        }
-      );
-    } catch (err) {
-      console.log(err);
     }
   },
   mounted() {
@@ -213,9 +199,28 @@ export default {
     handleErrors(code) {
       console.log(code);
     },
-    updateUI() {
+    async updateUI() {
       this.isAuthenticated = chilliController.clientState;
+      if (!this.isAuthenticated) {
+        try {
+          const { data } = await axios.get(
+            portalConfig.backendURL + "portal/auto-connect",
+            {
+              params: {
+                mac_address: this.request.mac
+              }
+            }
+          );
+          if (data.connect) {
+            this.loginData = data.login;
+            this.submitLogin();
+          }
+        } catch (err) {
+          console.log(err);
+        }
+      }
       this.appLoaded = true;
+      this.loading = false;
     },
     onDecode(e) {
       this.qrDialog = false;
@@ -252,15 +257,15 @@ export default {
             }
           }
         );
-        if (data.allow) {
-          chilliController.logon(username, password);
-          this.deviceNotRegister = false;
-        } else {
-          this.deviceNotRegister = true;
+        this.loading = false;
+        this.deviceNotRegister = !data.allow;
+        if (!data.allow) {
+          return;
         }
       } catch (err) {
-        chilliController.logon(username, password);
+        console.log(err);
       }
+      chilliController.logon(username, password);
     }
   }
 };
