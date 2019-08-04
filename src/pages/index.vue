@@ -204,7 +204,7 @@ export default {
       if (!this.isAuthenticated) {
         try {
           const { data } = await axios.get(
-            portalConfig.backendURL + "portal/auto-connect",
+            portalConfig.backendURL + "api/portal/auto-connect",
             {
               params: {
                 mac_address: this.request.mac
@@ -231,7 +231,7 @@ export default {
       this.loading = true;
       this.request.vouhcer = this.voucher;
       const { data } = await axios.post(
-        portalConfig.backendURL + "portal/vouchers",
+        portalConfig.backendURL + "api/portal/vouchers",
         this.request
       );
       if (data.status) {
@@ -249,7 +249,7 @@ export default {
 
       try {
         const { data } = await axios.get(
-          portalConfig.backendURL + "portal/device-access",
+          portalConfig.backendURL + "api/portal/device-access",
           {
             params: {
               username,
