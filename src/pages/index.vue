@@ -229,7 +229,7 @@ export default {
     },
     async submitVoucher() {
       this.loading = true;
-      this.request.vouhcer = this.voucher;
+      this.request.voucher = this.voucher;
       const { data } = await axios.post(
         portalConfig.backendURL + "api/portal/voucher",
         this.request
