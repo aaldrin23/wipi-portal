@@ -73,7 +73,6 @@
                         ></v-text-field>
                         <v-card-actions>
                           <v-btn
-                            :loading="loading"
                             :disabled="!voucher"
                             block
                             color="primary"
@@ -218,6 +217,10 @@ export default {
           vm.showAlert = true;
         }
       }
+      if (raw.message) {
+        vm.replyMessage = raw.message;
+        vm.showAlert = true;
+      }
     };
     chilliController.refresh();
   },
@@ -266,17 +269,21 @@ export default {
           username,
           password: data.login.password
         });
+      } else {
+        this.replyMessage = data.message;
+        this.showAlert = true;
       }
-      this.replyMessage = data.message;
-      this.showAlert = true;
-      this.loading = false;
     },
     async submitLogin(data) {
-      const valid = await this.$validator.validateAll("login");
+      let valid = true;
+      if (!data) {
+        // using login form
+        valid = await this.$validator.validateAll("login");
+        this.loadingMessage = "Logging you in...";
+        this.loggingOn = true;
+      }
       if (valid) {
         this.loading = true;
-        this.loggingOn = true;
-        this.loadingMessage = "Logging you in...";
         this.showAlert = false;
 
         const { username, password } = data || this.loginData;
@@ -294,13 +301,20 @@ export default {
           if (!data.allow) {
             this.replyMessage = "This device was not register to your account";
             this.showAlert = true;
-            this.loading = false;
             return;
           }
         } catch (err) {
           console.log(err);
         }
         chilliController.logon(username, password);
+      }
+    }
+  },
+  watch: {
+    isAuthenticated(val, from) {
+      if (!val && from) {
+        this.replyMessage = "Connection ended!";
+        this.showAlert = true;
       }
     }
   }
