@@ -14,9 +14,9 @@
             </div>
           </div>
         </v-flex>
-        <v-flex shrink v-if="deviceNotRegister">
-          <v-alert type="error" :value="true">
-            This device was not register to your account
+        <v-flex shrink style="width : 100%">
+          <v-alert type="error" v-model="showAlert">
+            {{replyMessage}}
             <template v-slot:close="{toggle}">
               <v-icon class="ml-2" @click="toggle">mdi-close-circle</v-icon>
             </template>
@@ -33,33 +33,33 @@
                 <v-flex>
                   <v-tabs-items v-model="tab">
                     <v-tab-item>
-                      <v-form>
+                      <v-form data-vv-scope="login">
                         <v-text-field
                           autocomplete="new-password"
                           v-model="loginData.username"
                           v-validate="'required'"
-                          :error-messages="errors.collect('Username')"
+                          :error-messages="errors.collect('login.Username')"
                           name="Username"
                           label="Username"
                           prepend-inner-icon="mdi-account"
                           :disabled="loading"
-                          @keypress.enter="submitLogin"
+                          @keypress.enter="submitLogin(null)"
                         ></v-text-field>
                         <v-text-field
                           autocomplete="new-password"
                           v-model="loginData.password"
                           v-validate="'required'"
-                          :error-messages="errors.collect('Password')"
+                          :error-messages="errors.collect('login.Password')"
                           type="password"
                           name="Password"
                           label="Password"
                           prepend-inner-icon="mdi-textbox-password"
                           :disabled="loading"
-                          @keypress.enter="submitLogin"
+                          @keypress.enter="submitLogin(null)"
                         ></v-text-field>
                       </v-form>
                       <v-card-actions>
-                        <v-btn block :loading="loading" color="primary" @click="submitLogin">Login</v-btn>
+                        <v-btn block color="primary" @click="submitLogin(null)">Login</v-btn>
                       </v-card-actions>
                     </v-tab-item>
                     <v-tab-item>
@@ -142,6 +142,18 @@
     <v-layout v-else row align-center justify-center>
       <v-progress-circular indeterminate color="primary"></v-progress-circular>
     </v-layout>
+    <v-dialog v-model="loading" persistent max-width="300px" transition="dialog-transition">
+      <v-card>
+        <v-card-text>
+          <v-layout column justify-center align-center>
+            <v-flex shrink>
+              <v-progress-circular indeterminate></v-progress-circular>
+            </v-flex>
+            <v-flex shrink>{{loadingMessage}}</v-flex>
+          </v-layout>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -175,8 +187,11 @@ export default {
       qrDialog: false,
       loading: false,
       isAuthenticated: false,
-      deviceNotRegister: false,
-      appLoaded: false
+      appLoaded: false,
+      showAlert: false,
+      loggingOn: false,
+      replyMessage: "",
+      loadingMessage: ""
     };
   },
   computed: {
@@ -185,6 +200,7 @@ export default {
     }
   },
   mounted() {
+    let vm = this;
     chilliController.host = portalConfig.host;
     chilliController.port = portalConfig.port;
     chilliController.interval = portalConfig.interval;
@@ -193,6 +209,16 @@ export default {
     chilliController.onError = this.handleErrors;
     chilliController.onUpdate = this.updateUI;
 
+    chilliController.onReply = function(raw) {
+      if (chilliController.clientState != 2) {
+        vm.loading = false;
+        if (vm.loggingOn) {
+          vm.replyMessage = "Login failed!";
+          vm.loggingOn = false;
+          vm.showAlert = true;
+        }
+      }
+    };
     chilliController.refresh();
   },
   methods: {
@@ -212,8 +238,7 @@ export default {
             }
           );
           if (data.connect) {
-            this.loginData = data.login;
-            this.submitLogin();
+            this.submitLogin(data.login);
           }
         } catch (err) {
           console.log(err);
@@ -229,43 +254,54 @@ export default {
     },
     async submitVoucher() {
       this.loading = true;
+      this.loadingMessage = "Validating voucher...";
       this.request.voucher = this.voucher;
       const { data } = await axios.post(
         portalConfig.backendURL + "api/portal/voucher",
         this.request
       );
       if (data.status) {
-        this.loginData = {
-          username: this.request.mac,
+        const username = this.request.mac + "_" + this.voucher;
+        this.submitLogin({
+          username,
           password: data.login.password
-        };
-        this.submitLogin();
+        });
       }
+      this.replyMessage = data.message;
+      this.showAlert = true;
+      this.loading = false;
     },
-    async submitLogin() {
-      this.loading = true;
-      this.deviceNotRegister = false;
-      const { username, password } = this.loginData;
+    async submitLogin(data) {
+      const valid = await this.$validator.validateAll("login");
+      if (valid) {
+        this.loading = true;
+        this.loggingOn = true;
+        this.loadingMessage = "Logging you in...";
+        this.showAlert = false;
 
-      try {
-        const { data } = await axios.get(
-          portalConfig.backendURL + "api/portal/device-access",
-          {
-            params: {
-              username,
-              mac_address: this.request.mac
+        const { username, password } = data || this.loginData;
+
+        try {
+          const { data } = await axios.get(
+            portalConfig.backendURL + "api/portal/device-access",
+            {
+              params: {
+                username,
+                mac_address: this.request.mac
+              }
             }
+          );
+          if (!data.allow) {
+            this.replyMessage = "This device was not register to your account";
+            this.showAlert = true;
+            this.loading = false;
+            return;
           }
-        );
-        this.loading = false;
-        this.deviceNotRegister = !data.allow;
-        if (!data.allow) {
-          return;
+        } catch (err) {
+          console.log(err);
         }
-      } catch (err) {
-        console.log(err);
+        chilliController.logon(username, password);
       }
-      chilliController.logon(username, password);
     }
   }
 };
